@@ -16,41 +16,39 @@ creds_dict = st.secrets["service_account"]
 credentials = service_account.Credentials.from_service_account_info(creds_dict, scopes=scope)
 client = gspread.authorize(credentials)
 
-# Social-dashboard
-SHEET_ID = "1hSHzko--Pnt2R6iZD_jyi-WMOycVw49snibLi575Z2M"
+# SEO-dashboard
+SHEET_ID = "1sQuYdHhrA23zMO7tqyOFQ_m6uHYsfAr4vg3muXl6K_w"
 worksheet = client.open_by_key(SHEET_ID).worksheet("Salg")
 df = get_as_dataframe(worksheet, evaluate_formulas=True)
 
-# Fjern tomme rækker
+# Fjern tomme rækker og formatter
 df = df.dropna(how='all')
 df = df[['Produkt', 'Pris', 'Dato for salg']].dropna(subset=['Produkt', 'Pris'])
-df['Dato for salg'] = pd.to_datetime(df['Dato for salg'], dayfirst=True)
+df['Dato for salg'] = pd.to_datetime(df['Dato for salg'], dayfirst=True, errors='coerce')
 df['Uge'] = df['Dato for salg'].dt.isocalendar().week
 df['Pris'] = pd.to_numeric(df['Pris'], errors='coerce')
 
 # --- Beregninger ---
 samlet = df['Pris'].sum()
-q2_maal = 90880
-kendte_produkter = ["Leadpage", "Klaviyo", "Lead Ads", "Ekstra kampagne", "Xtra Visual", "SST"]
+q2_maal = 200000
 procent = samlet / q2_maal if q2_maal else 0
 
 # --- Ugeopsætning ---
 start_uge = 18
 slut_uge = 26
 alle_uger = list(range(start_uge, slut_uge + 1))
-
 ugevis = df.groupby('Uge')['Pris'].sum().reindex(alle_uger, fill_value=0)
 ugevis.index = ugevis.index.map(lambda u: f"Uge {u}")
 
 # Layout og autorefresh
-st.set_page_config(page_title="Social Dashboard", layout="wide")
-st.markdown("<h1 style='text-align: center;margin-top:-50px;margin-bottom:-80px'>Social - Q2 Mål</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="SEO Dashboard", layout="wide")
+st.markdown("<h1 style='text-align: center;margin-top:-50px;margin-bottom:-80px'>SEO - Q2 Mål</h1>", unsafe_allow_html=True)
 from streamlit_autorefresh import st_autorefresh
 st_autorefresh(interval=300_000, key="datarefresh")
 
 col1, col2 = st.columns([2, 1])
 
-# --- Linechart med markering af nuværende uge ---
+# --- Linechart med nuværende uge ---
 with col1:
     st.subheader(" ")
     inner_cols = st.columns([0.1, 0.8, 0.1])
@@ -102,8 +100,9 @@ with col2:
         ax2.text(0, 0, f"{procent*100:.2f}%", ha='center', va='center', fontsize=20)
         st.pyplot(fig2)
 
-# --- Alle produkter solgt, sorteret efter omsætning ---
+# --- Produkter ---
 st.markdown("<br>", unsafe_allow_html=True)
+kendte_produkter = ["SEO Ai Boost", "Linkbuilding", "Content pakker", "GBP", "Bing Business", "Maps Optimering"]
 produkt_data = df.groupby("Produkt")["Pris"].agg(["sum", "count"]).reindex(kendte_produkter, fill_value=0)
 
 cols = st.columns(len(produkt_data))
